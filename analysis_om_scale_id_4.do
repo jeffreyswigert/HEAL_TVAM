@@ -5,7 +5,6 @@ This performs VA analysis on the subsection of vam_analysis_sample.dta where om_
 
 Coded by: Mitchell Zufelt
 
-Last Updated: 05-13-2020
 
 INPUTS: 
 		- vam_analysis_sample.dta
@@ -75,7 +74,7 @@ xtset therapist_id room_id_by_p
 global X_1 i.client_edu_lvl i.missing_edu i.client_gender i.missing_gender i.client_ethnicity i.missing_ethnicity i.client_marital_status i.missing_marrital i.client_age i.missing_age i.client_country i.client_state
 
 xtreg overall_improvement $X_1, fe 
-eststo te_model
+eststo tvam_model
 
 **1.4 The therapist's fixed effect is equal to:
 predict therapist_effect, u
@@ -179,12 +178,23 @@ reg overall_improvement zclient_specific $X_1 $match_char
 
 reg zoverall_improvement zclient_specific $X_1
 
-**3.3 EXPLORING EXOGENEITY OF THERAPIST ASSIGNMENT
+
+*********STEP 4: Robustness checks and Alternative specifications.**********
+
+**4.1 EXPLORING EXOGENEITY OF THERAPIST ASSIGNMENT
 reg therapist_effect $X_1
  eststo sprite
-esttab  sprite using exogenous_assignment.doc, replace b(3) se(3) stat(r2) title("Regression of Therapist VA on Client Characteristics") label
+outreg2 sprite using exogenous_assignment.xls, replace title("Regression of Therapist VA on Client Characteristics") label
 
- 
+**4.2 Breaking up unbalanced panel by 'count'
+forvalues i = 1/13 {
+	qui: xtreg overall_improvement $X_1 if count >=`i', fe
+	predict t_va_`i', u
+}
+qui: xtreg overall_improvement $X_1 if count > 13, fe
+predict t_va_14up, u
+//really not sure how useful this is. Just exploring it
+
 **************************************************************************
 ********************************REPORTING*********************************
 **************************************************************************
