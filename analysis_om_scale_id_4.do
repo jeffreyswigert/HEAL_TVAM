@@ -181,7 +181,7 @@ reg zoverall_improvement zclient_specific $X_1
 
 *********STEP 4: Robustness checks and Alternative specifications.**********
 
-**4.1 EXPLORING EXOGENEITY OF THERAPIST ASSIGNMENT
+**4.1 Exploring exogeneity of therapist assignment
 reg therapist_effect $X_1
  eststo sprite
 outreg2 sprite using exogenous_assignment.xls, replace title("Regression of Therapist VA on Client Characteristics") label
@@ -209,10 +209,9 @@ mkdir figures
 histogram therapist_effect, bin(100) fcolor(navy) xscale(range(-3 3)) title(Therapist VA Distribution) xtitle(Therapist Value-Added)
 graph save "Graph" "E:\reporting\figures\VA_distribution.gph", replace
 
-scalar iqr = .527091 + .57836
-scalar outlier = 1.5*iqr
-count if therapist_effect > (.527091+outlier) | therapist_effect < (-.57836 - outlier)
-drop if therapist_effect > (.527091+outlier) | therapist_effect < (-.57836 - outlier)
+sum therapist_effect, detail
+scalar outlier = 1.5* (r(p75)-r(p25))
+drop if therapist_effect > (r(p75)+outlier) | therapist_effect < (r(p25)- outlier)
 
 histogram therapist_effect, bin(50) fcolor(navy) xtitle(Therapist Value-Added) xscale(range(-3 3)) title("Therapist VA Distribution (Outliers Omitted)")
 graph save "Graph" "E:\reporting\figures\VA_distribution_nooutliers.gph", replace
@@ -222,16 +221,14 @@ graph save "Graph" "E:\reporting\figures\VA_distribution_nooutliers.gph", replac
 
 use "E:\working_om_4.dta", clear
 
-//TODO: Make this section replicable for other om_scale_id's; I suggest using estpost codebook and saving the quartiles from that as scalars
-scalar one = -.57836
-scalar two = -.046796
-scalar three = .527091
-scalar four = 14.688753
+sum therapist_effect, detail
+scalar one = r(p25)
+scalar two = r(p50)
+scalar three = r(p75)
 gen quartile = 1
 replace quartile = 2 if therapist_effect > one & therapist_effect <= two
 replace quartile = 3 if therapist_effect > two & therapist_effect <= three
-replace quartile = 4 if therapist_effect > three & therapist_effect <= four
-//scalar ci = 1.96*(1.035406/sqrt(54973))
+replace quartile = 4 if therapist_effect > three
 cibar therapist_effect , over(quartile) level(95) bargap(5) 
 graph save "Graph" "E:\reporting\figures\mean_VA_by_quartile.gph", replace
 
@@ -251,7 +248,7 @@ putexcel A3=matrix(label) B3=matrix(freq) C3=matrix(freq/r(N))
 
 **Fig. 4: Explanation of Therapist VA : Regression Output
 
-//already done in lines 126-131
+//already done in section 2.2
 
 
 **Fig. 5: Causal Effect of Therapist VA on Individual Client Outcomes
