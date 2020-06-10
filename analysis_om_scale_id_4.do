@@ -17,6 +17,9 @@ clear
 set more off
 
 use "E:\vam_analysis_sample.dta"
+mkdir tvam_main
+cd tvam_main
+mkdir reporting
 
 keep if om_scale_id == 4
 
@@ -38,7 +41,7 @@ replace scale_score = 21-scale_score
 
 /*Declare time series of COUNT*/
 xtset room_id_by_p count
-save "E:\om_scale_id_4_analysis.dta", replace
+save "om_scale_id_4_analysis.dta", replace
 
 ****************************BEGIN ANALYSIS***********************************
 
@@ -99,6 +102,8 @@ replace therapist_age = 3 if t_age >= 26 & t_age <= 35
 replace therapist_age = 4 if t_age >= 36 & t_age <= 49
 replace therapist_age = 5 if t_age >= 50 & t_age <= 110
 //Significant amount of missing therapist_age's. Not sure how best to handle
+label define t_age1 1 "missing" 2 "18-25" 3 "26-35" 4 "36-49" 5 "50+" 
+label values therapist_age t_age1
 
 //Create variables to explore characteristics of the client/therapist match
 gen gender_match = .
@@ -119,7 +124,7 @@ global interaction_char time_to_complete_total media_total_duration_secs_audio m
 global match_char i.gender_match i.age_match firstscore 
 
 **2.2 What explains therapist_effect?
-
+cd reporting
 //Naive: How a therapist's fixed characteristics affect his therapist_effect
 reg therapist_effect $p_char , vce(robust)
 outreg2 using explain_va, replace excel dec(3) label
@@ -162,13 +167,13 @@ by nonmissing therapist_id : gen nmcount = _N if nonmissing
 gen client_specific = (total - overall_improvement) / (nmcount - 1) //In words, this is the avg of a therapist's effect (in terms of overall_improvement) for each of his clients, excluding the current observation.
 drop nonmissing total nmcount
 
-save "working_om_4.dta", replace
 
 **3.2 CAUSAL EFFECT OF THERAPIST VA ON CLIENT OUTCOMES
 
 egen zclient_specific = std(client_specific)
 egen zoverall_improvement = std(overall_improvement)
-
+save "working_om_4.dta", replace
+/*
 reg overall_improvement client_specific
 reg overall_improvement client_specific $X_1
 
@@ -177,73 +182,579 @@ reg overall_improvement zclient_specific $X_1
 reg overall_improvement zclient_specific $X_1 $match_char
 
 reg zoverall_improvement zclient_specific $X_1
-
+*/
 
 *********STEP 4: Robustness checks and Alternative specifications.**********
-
+cd reporting
+mkdir experimental
+cd experimental
 **4.1 Exploring exogeneity of therapist assignment
 reg therapist_effect $X_1
  eststo sprite
 outreg2 sprite using exogenous_assignment.xls, replace title("Regression of Therapist VA on Client Characteristics") label
 
 **4.2 Breaking up unbalanced panel by 'count'
-forvalues i = 1/13 {
-	qui: xtreg overall_improvement $X_1 if count >=`i', fe
-	predict t_va_`i', u
-}
-qui: xtreg overall_improvement $X_1 if count > 13, fe
-predict t_va_14up, u
 //really not sure how useful this is. Just exploring it
+forvalues i = 1/13 {
+	qui: xtreg overall_improvement $X_1 if count ==`i', fe
+	scalar r2_`i' = e(r2_o)
+	predict t_va_`i', u
+	qui: sum t_va_`i', detail
+	scalar sd_`i' = r(sd)
+}
+
+qui: xtreg overall_improvement $X_1 if count > 13, fe
+scalar r2_14 = e(r2_o)
+predict t_va_14up, u
+qui: sum t_va_14up, detail
+scalar sd_14 = r(sd)
+
+clear matrix
+forvalues i=1/2 {
+	mat A`i' = J(14,1,.)
+}
+
+local n 1
+forvalues k = 1/14 {
+	mat A1[`n',1]= r2_`k'
+	mat A2[`n',1]= sd_`k'
+	local ++n
+}
+
+matrix rownames A1= "1" "2" "3" "4" "5" "6" "7" "8" "9" "10" "11" "12" "13" "14+" 
+frmttable, statmat(A1) replace sdec(3) title("Breaking Up Unbalanced Panel by 'Count'") ctitles(" ", "Reg. R2")
+frmttable, statmat(A2) replace sdec(3) merge ctitles("Std. Dev. of Predicted Vals")
+frmttable using "count_breakdown.doc" , replay replace
+
+drop t_va_*
 
 **************************************************************************
 ********************************REPORTING*********************************
 **************************************************************************
 
-mkdir reporting
-cd reporting
-mkdir tables
-mkdir figures
-
+cd ..
 
 **Fig. 1: Histogram of VA distribution
 histogram therapist_effect, bin(100) fcolor(navy) xscale(range(-3 3)) title(Therapist VA Distribution) xtitle(Therapist Value-Added)
-graph save "Graph" "E:\reporting\figures\VA_distribution.gph", replace
+graph save "Graph" "VA_distribution.gph", replace
 
 sum therapist_effect, detail
 scalar outlier = 1.5* (r(p75)-r(p25))
 drop if therapist_effect > (r(p75)+outlier) | therapist_effect < (r(p25)- outlier)
 
 histogram therapist_effect, bin(50) fcolor(navy) xtitle(Therapist Value-Added) xscale(range(-3 3)) title("Therapist VA Distribution (Outliers Omitted)")
-graph save "Graph" "E:\reporting\figures\VA_distribution_nooutliers.gph", replace
+graph save "Graph" "VA_distribution_nooutliers.gph", replace
 
 
 **Fig. 2: Mean Gain Scores
+cd ..
+use "working_om_4.dta", clear
+cd reporting
 
-use "E:\working_om_4.dta", clear
-
-sum therapist_effect, detail
-scalar one = r(p25)
-scalar two = r(p50)
-scalar three = r(p75)
-gen quartile = 1
-replace quartile = 2 if therapist_effect > one & therapist_effect <= two
-replace quartile = 3 if therapist_effect > two & therapist_effect <= three
-replace quartile = 4 if therapist_effect > three
+xtile quartile = therapist_effect, nq(4)
 cibar therapist_effect , over(quartile) level(95) bargap(5) 
-graph save "Graph" "E:\reporting\figures\mean_VA_by_quartile.gph", replace
+graph save "Graph" "mean_VA_by_quartile.gph", replace
 
 
-**Fig. 3: Summary Statistics
+**Fig. 3: Descriptive Statistics
 
-cd "E:\reporting\tables"
+//First table: therapist descriptives
+clear matrix
+forvalues i=1/3 {
+	mat A`i' = J(9,1,.)
+}
+
+estpost tab therapist_license_type
+mat x = e(b)
+mat y = e(pct)
+mat z = e(cumpct)
+
+forvalues i = 1/9 {
+	scalar x`i' = x[1,`i']
+	scalar y`i' = y[1,`i']
+}
+
+forvalues i = 1/9 {
+	if `i' < 9 {
+		scalar z`i' = z[1,`i']
+	}
+	else {
+		scalar z`i' = .
+	}
+} 
+
+local n 1
+forvalues i = 1/9 {
+	mat A1[`n',1]= x`i'
+	mat A2[`n',1]= y`i'
+	mat A3[`n',1]= z`i'
+	local ++n
+}
+scalar drop _all
+
+matrix rownames A1= "LCSW" "Psychologist" "LPC" "LMFT" "LMHC" "LCPC" "LPCC" "Other" "Total"
+frmttable, statmat(A1) replace sdec(0) title("License Type") ctitles("","N")
+frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
+frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
+frmttable using "t_descriptives.doc" , replay replace
+
+///////////////
+clear matrix
+forvalues i=1/3 {
+	mat A`i' = J(8,1,.)
+}
+
+estpost tab therapist_pro_degree
+mat x = e(b)
+mat y = e(pct)
+mat z = e(cumpct)
+
+forvalues i = 1/8 {
+	scalar x`i' = x[1,`i']
+	scalar y`i' = y[1,`i']
+}
+
+forvalues i = 1/8 {
+	if `i' < 8 {
+		scalar z`i' = z[1,`i']
+	}
+	else {
+		scalar z`i' = .
+	}
+} 
+
+local n 1
+forvalues i = 1/8 {
+	mat A1[`n',1]= x`i'
+	mat A2[`n',1]= y`i'
+	mat A3[`n',1]= z`i'
+	local ++n
+}
+scalar drop _all
+
+matrix rownames A1= "M Social Work" "M Counseling" "M Counseling Psychology" "M Marriage and FT" "M Psychology" "PhD or PsyD" "Other" "Total"
+frmttable, statmat(A1) replace sdec(0) title("Professional Degree") ctitles("","N")
+frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
+frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
+frmttable using "t_descriptives.doc" , addtable replace
+
+///////////////
+clear matrix
+forvalues i=1/3 {
+	mat A`i' = J(5,1,.)
+}
+
+estpost tab therapist_experience
+mat x = e(b)
+mat y = e(pct)
+mat z = e(cumpct)
+
+forvalues i = 1/5 {
+	scalar x`i' = x[1,`i']
+	scalar y`i' = y[1,`i']
+}
+
+forvalues i = 1/5 {
+	if `i' < 5 {
+		scalar z`i' = z[1,`i']
+	}
+	else {
+		scalar z`i' = .
+	}
+} 
+
+local n 1
+forvalues i = 1/5 {
+	mat A1[`n',1]= x`i'
+	mat A2[`n',1]= y`i'
+	mat A3[`n',1]= z`i'
+	local ++n
+}
+scalar drop _all
+
+matrix rownames A1= "No Real Exp Yet" "Less Than 5 Yrs" "5-10 Yrs" "More Than 10 Yrs" "Total"
+frmttable, statmat(A1) replace sdec(0) title("Experience") ctitles("","N")
+frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
+frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
+frmttable using "t_descriptives.doc" , addtable replace
+
+///////////////
+clear matrix
+forvalues i=1/3 {
+	mat A`i' = J(4,1,.)
+}
+
+estpost tab therapist_pro_degree
+mat x = e(b)
+mat y = e(pct)
+mat z = e(cumpct)
+
+forvalues i = 1/4 {
+	scalar x`i' = x[1,`i']
+	scalar y`i' = y[1,`i']
+}
+
+forvalues i = 1/4 {
+	if `i' < 4 {
+		scalar z`i' = z[1,`i']
+	}
+	else {
+		scalar z`i' = .
+	}
+} 
+
+local n 1
+forvalues i = 1/4 {
+	mat A1[`n',1]= x`i'
+	mat A2[`n',1]= y`i'
+	mat A3[`n',1]= z`i'
+	local ++n
+}
+scalar drop _all
+
+matrix rownames A1= "Female" "Male" "Other" "Total"
+frmttable, statmat(A1) replace sdec(0) title("Gender") ctitles("","N")
+frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
+frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
+frmttable using "t_descriptives.doc" , addtable replace
+
+///////////////
+clear matrix
+forvalues i=1/3 {
+	mat A`i' = J(6,1,.)
+}
+
+estpost tab therapist_pro_degree
+mat x = e(b)
+mat y = e(pct)
+mat z = e(cumpct)
+
+forvalues i = 1/6 {
+	scalar x`i' = x[1,`i']
+	scalar y`i' = y[1,`i']
+}
+
+forvalues i = 1/6 {
+	if `i' < 6 {
+		scalar z`i' = z[1,`i']
+	}
+	else {
+		scalar z`i' = .
+	}
+} 
+
+local n 1
+forvalues i = 1/6 {
+	mat A1[`n',1]= x`i'
+	mat A2[`n',1]= y`i'
+	mat A3[`n',1]= z`i'
+	local ++n
+}
+scalar drop _all
+
+matrix rownames A1= "missing" "18-25" "26-35" "36-49" "50+" "Total"
+frmttable, statmat(A1) replace sdec(0) title("Age") ctitles("","N")
+frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
+frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
+frmttable using "t_descriptives.doc" , addtable replace
 
 
-//I need to learn a better way of making tables. I used this and did a ton of copy/pasting in order to fill out a table.
+//Second table: therapist self-reported specialties
+clear matrix
+forvalues i=1/2 {
+	mat A`i' = J(8,1,.)
+}
 
-tab therapist_license_type, sort matcell(freq) matrow(label)
-putexcel A1=("Therapist License Type") B2=("Freq.") C2=("Percent")
-putexcel A3=matrix(label) B3=matrix(freq) C3=matrix(freq/r(N))
+qui sum therapist_cbt
+scalar allobs=r(N)
+local specialties therapist_dbt therapist_cbt therapist_mbct therapist_mi therapist_ptsd therapist_relational therapist_emotionally therapist_psychoanalytic
+local n 1
+foreach var of local specialties {
+	count if `var'
+	mat A1[`n',1]=r(N)
+	mat A2[`n',1]=((r(N)/allobs)*100)
+	local ++n
+} 
 
+matrix rownames A1 = "DBT" "CBT" "MBCT" "MI" "PTSD" "Relational" "Emotional" "Psychoanalytic"
+frmttable, statmat(A1) replace sdec(0) title("Therapist Specialties") ctitles(" ", "Count") 
+frmttable, statmat(A2) replace sdec(2) merge ctitles("pct")
+frmttable using "specialties.doc", replay replace
+
+//Third table: client descriptives
+clear matrix
+forvalues i=1/3 {
+	mat A`i' = J(10,1,.)
+}
+
+estpost tab client_edu_lvl
+mat x = e(b)
+mat y = e(pct)
+mat z = e(cumpct)
+
+forvalues i = 1/10 {
+	scalar x`i' = x[1,`i']
+	scalar y`i' = y[1,`i']
+}
+
+forvalues i = 1/10 {
+	if `i' < 10 {
+		scalar z`i' = z[1,`i']
+	}
+	else {
+		scalar z`i' = .
+	}
+} 
+
+local n 1
+forvalues i = 1/10 {
+	mat A1[`n',1]= x`i'
+	mat A2[`n',1]= y`i'
+	mat A3[`n',1]= z`i'
+	local ++n
+}
+scalar drop _all
+
+matrix rownames A1= "3" "4" "5" "6" "7" "8" "High School" "Bachelor Degree or Higher" "NA" "Total"
+frmttable, statmat(A1) replace sdec(0) title("Education Level") ctitles("","N")
+frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
+frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
+frmttable using "c_descriptives.doc" , replay replace
+
+///////////////
+clear matrix
+forvalues i=1/3 {
+	mat A`i' = J(9,1,.)
+}
+
+estpost tab client_gender
+mat x = e(b)
+mat y = e(pct)
+mat z = e(cumpct)
+
+forvalues i = 1/9 {
+	scalar x`i' = x[1,`i']
+	scalar y`i' = y[1,`i']
+}
+
+forvalues i = 1/9 {
+	if `i' < 9 {
+		scalar z`i' = z[1,`i']
+	}
+	else {
+		scalar z`i' = .
+	}
+} 
+
+local n 1
+forvalues i = 1/9 {
+	mat A1[`n',1]= x`i'
+	mat A2[`n',1]= y`i'
+	mat A3[`n',1]= z`i'
+	local ++n
+}
+scalar drop _all
+
+matrix rownames A1= "Female" "Male" "Other" "Queer" "Non-Binary" "Transgender Female" "Transgender Male" "NA" "Total"
+frmttable, statmat(A1) replace sdec(0) title("Gender") ctitles("","N")
+frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
+frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
+frmttable using "c_descriptives.doc" , addtable replace
+
+///////////////
+clear matrix
+forvalues i=1/3 {
+	mat A`i' = J(9,1,.)
+}
+
+estpost tab client_ethnicity
+mat x = e(b)
+mat y = e(pct)
+mat z = e(cumpct)
+
+forvalues i = 1/9 {
+	scalar x`i' = x[1,`i']
+	scalar y`i' = y[1,`i']
+}
+
+forvalues i = 1/9 {
+	if `i' < 9 {
+		scalar z`i' = z[1,`i']
+	}
+	else {
+		scalar z`i' = .
+	}
+} 
+
+local n 1
+forvalues i = 1/9 {
+	mat A1[`n',1]= x`i'
+	mat A2[`n',1]= y`i'
+	mat A3[`n',1]= z`i'
+	local ++n
+}
+scalar drop _all
+
+matrix rownames A1= "Caucasian" "Black" "Asian" "Hispanic" "Native American" "Other" "Declined" "NA" "Total"
+frmttable, statmat(A1) replace sdec(0) title("Ethnicity") ctitles("","N")
+frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
+frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
+frmttable using "c_descriptives.doc" , addtable replace
+
+///////////////
+clear matrix
+forvalues i=1/3 {
+	mat A`i' = J(9,1,.)
+}
+
+estpost tab client_marital_status
+mat x = e(b)
+mat y = e(pct)
+mat z = e(cumpct)
+
+forvalues i = 1/9 {
+	scalar x`i' = x[1,`i']
+	scalar y`i' = y[1,`i']
+}
+
+forvalues i = 1/9 {
+	if `i' < 9 {
+		scalar z`i' = z[1,`i']
+	}
+	else {
+		scalar z`i' = .
+	}
+} 
+
+local n 1
+forvalues i = 1/9 {
+	mat A1[`n',1]= x`i'
+	mat A2[`n',1]= y`i'
+	mat A3[`n',1]= z`i'
+	local ++n
+}
+scalar drop _all
+
+matrix rownames A1= "Single" "Married" "Living w/ Partner" "In a Relationship" "Divorced" "Separated" "Widowed" "NA" "Total"
+frmttable, statmat(A1) replace sdec(0) title("Marital Status") ctitles("","N")
+frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
+frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
+frmttable using "c_descriptives.doc" , addtable replace
+
+///////////////
+clear matrix
+forvalues i=1/3 {
+	mat A`i' = J(7,1,.)
+}
+
+estpost tab client_age
+mat x = e(b)
+mat y = e(pct)
+mat z = e(cumpct)
+
+forvalues i = 1/7 {
+	scalar x`i' = x[1,`i']
+	scalar y`i' = y[1,`i']
+}
+
+forvalues i = 1/7 {
+	if `i' < 7 {
+		scalar z`i' = z[1,`i']
+	}
+	else {
+		scalar z`i' = .
+	}
+} 
+
+local n 1
+forvalues i = 1/7 {
+	mat A1[`n',1]= x`i'
+	mat A2[`n',1]= y`i'
+	mat A3[`n',1]= z`i'
+	local ++n
+}
+scalar drop _all
+
+matrix rownames A1= "0-17" "18-25" "26-35" "36-49" "50+" "NA" "Total"
+frmttable, statmat(A1) replace sdec(0) title("Age") ctitles("","N")
+frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
+frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
+frmttable using "c_descriptives.doc" , addtable replace
+
+///////////////
+clear matrix
+forvalues i=1/3 {
+	mat A`i' = J(5,1,.)
+}
+
+estpost tab client_country
+mat x = e(b)
+mat y = e(pct)
+mat z = e(cumpct)
+
+forvalues i = 1/5 {
+	scalar x`i' = x[1,`i']
+	scalar y`i' = y[1,`i']
+}
+
+forvalues i = 1/5 {
+	if `i' < 5 {
+		scalar z`i' = z[1,`i']
+	}
+	else {
+		scalar z`i' = .
+	}
+} 
+
+local n 1
+forvalues i = 1/5 {
+	mat A1[`n',1]= x`i'
+	mat A2[`n',1]= y`i'
+	mat A3[`n',1]= z`i'
+	local ++n
+}
+scalar drop _all
+
+matrix rownames A1= "US" "CA" "GB" "Other" "Total"
+frmttable, statmat(A1) replace sdec(0) title("Country") ctitles("","N")
+frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
+frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
+frmttable using "c_descriptives.doc" , addtable replace
+
+//Fourth table: Therapist VA descriptives
+clear matrix
+forvalues i=1/6 {
+	mat A`i' = J(5,1,.)
+}
+
+qui sum therapist_effect 
+mat A1[1,1]=r(N)
+mat A2[1,1]=r(mean)
+mat A3[1,1]=r(sd)
+mat A4[1,1]=r(min)
+mat A5[1,1]=r(max)
+mat A6[1,1]=(r(max)-r(min))
+
+local n 2
+forvalues k = 1/4 {
+	qui sum therapist_effect if quartile == `k'
+	mat A1[`n',1]=r(N)
+	mat A2[`n',1]=r(mean)
+	mat A3[`n',1]=r(sd)
+	mat A4[`n',1]=r(min)
+	mat A5[`n',1]=r(max)
+	mat A6[`n',1]=(r(max)-r(min))
+	local ++n
+}
+
+matrix rownames A1= "Total" "1st Quartile" "2nd Quartile" "3rd Quartile" "4th Quartile"
+frmttable, statmat(A1) replace sdec(0) title("Therapist Value-Added") ctitles(" ", "N")
+frmttable, statmat(A2) replace sdec(3) merge ctitles("Mean")
+frmttable, statmat(A3) replace sdec(3) merge ctitles("Std. Dev.")
+frmttable, statmat(A4) replace sdec(3) merge ctitles("Min")
+frmttable, statmat(A5) replace sdec(3) merge ctitles("Max")
+frmttable, statmat(A6) replace sdec(3) merge ctitles("Range")
+frmttable using "VA_summary.doc" , replay replace
 
 
 **Fig. 4: Explanation of Therapist VA : Regression Output
@@ -253,11 +764,11 @@ putexcel A3=matrix(label) B3=matrix(freq) C3=matrix(freq/r(N))
 
 **Fig. 5: Causal Effect of Therapist VA on Individual Client Outcomes
 
-reg overall_improvement zclient_specific 
+qui reg overall_improvement zclient_specific 
 outreg2 using va_effect, replace excel dec(3) label
 
-reg overall_improvement zclient_specific $X_1 
+qui reg overall_improvement zclient_specific $X_1 
 outreg2 using va_effect, append excel dec(3) label
 
-reg overall_improvement zclient_specific $X_1 $match_char
+qui reg overall_improvement zclient_specific $X_1 $match_char
 outreg2 using va_effect, append excel dec(3) label
