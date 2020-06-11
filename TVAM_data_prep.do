@@ -3,8 +3,6 @@ DATA CLEANING AND PREP FOR "Measuring the Impacts of Therapists: A Value-Added A
 
 Coded by: Mitchell Zufelt and Jeff Swigert
 
-Last Updated: 02-27-2020
-
 INPUTS:
 		- TalkSpace_Base.csv
 *****************************************************************/
