@@ -16,10 +16,10 @@ INPUTS:
 clear
 set more off
 
-use "E:\vam_analysis_sample.dta"
-mkdir tvam_main
-cd tvam_main
-mkdir reporting
+use "vam_analysis_sample.dta"
+mkdir tvam_4
+cd tvam_4
+mkdir reporting_4
 
 keep if om_scale_id == 4
 
@@ -81,7 +81,7 @@ eststo tvam_model
 
 **1.4 The therapist's fixed effect is equal to:
 predict therapist_effect, u
-br therapist_id therapist_effect
+//br therapist_id therapist_effect
 
 
 **********STEP 2: Explore Fixed Effects.**********
@@ -124,14 +124,14 @@ global interaction_char time_to_complete_total media_total_duration_secs_audio m
 global match_char i.gender_match i.age_match firstscore 
 
 **2.2 What explains therapist_effect?
-cd reporting
+cd reporting_4
 //Naive: How a therapist's fixed characteristics affect his therapist_effect
 reg therapist_effect $p_char , vce(robust)
-outreg2 using explain_va, replace excel dec(3) label
+outreg2 using explain_va_4, replace excel dec(3) label
 
 //Include effect of therapist/client match characteristics
 reg therapist_effect $p_char $match_char, vce(robust)
-outreg2 using explain_va, append excel dec(3) label
+outreg2 using explain_va_4, append excel dec(3) label
 
 
 //Include all client/interaction characteristics
@@ -155,6 +155,8 @@ gen adjtherapist_effect = therapist_effect - yhat
 
 
 **********STEP 3: Individual effects on clients.**********
+
+cd ..
 
 **3.1 Generate client_specific improvement variable (nonparametric)
 gen byte nonmissing = !missing(overall_improvement)  
@@ -185,13 +187,14 @@ reg zoverall_improvement zclient_specific $X_1
 */
 
 *********STEP 4: Robustness checks and Alternative specifications.**********
-cd reporting
-mkdir experimental
-cd experimental
+cd reporting_4
+mkdir experimental_4
+cd experimental_4
+
 **4.1 Exploring exogeneity of therapist assignment
 reg therapist_effect $X_1
  eststo sprite
-outreg2 sprite using exogenous_assignment.xls, replace title("Regression of Therapist VA on Client Characteristics") label
+outreg2 sprite using exogenous_assignment_4.xls, replace title("Regression of Therapist VA on Client Characteristics") label
 
 **4.2 Breaking up unbalanced panel by 'count'
 //really not sure how useful this is. Just exploring it
@@ -224,7 +227,7 @@ forvalues k = 1/14 {
 matrix rownames A1= "1" "2" "3" "4" "5" "6" "7" "8" "9" "10" "11" "12" "13" "14+" 
 frmttable, statmat(A1) replace sdec(3) title("Breaking Up Unbalanced Panel by 'Count'") ctitles(" ", "Reg. R2")
 frmttable, statmat(A2) replace sdec(3) merge ctitles("Std. Dev. of Predicted Vals")
-frmttable using "count_breakdown.doc" , replay replace
+frmttable using "count_breakdown_4.doc" , replay replace
 
 drop t_va_*
 
@@ -236,24 +239,24 @@ cd ..
 
 **Fig. 1: Histogram of VA distribution
 histogram therapist_effect, bin(100) fcolor(navy) xscale(range(-3 3)) title(Therapist VA Distribution) xtitle(Therapist Value-Added)
-graph save "Graph" "VA_distribution.gph", replace
+graph save "Graph" "VA_distribution_4.gph", replace
 
 sum therapist_effect, detail
 scalar outlier = 1.5* (r(p75)-r(p25))
 drop if therapist_effect > (r(p75)+outlier) | therapist_effect < (r(p25)- outlier)
 
 histogram therapist_effect, bin(50) fcolor(navy) xtitle(Therapist Value-Added) xscale(range(-3 3)) title("Therapist VA Distribution (Outliers Omitted)")
-graph save "Graph" "VA_distribution_nooutliers.gph", replace
+graph save "Graph" "VA_distribution_nooutliers_4.gph", replace
 
 
 **Fig. 2: Mean Gain Scores
 cd ..
 use "working_om_4.dta", clear
-cd reporting
+cd reporting_4
 
 xtile quartile = therapist_effect, nq(4)
 cibar therapist_effect , over(quartile) level(95) bargap(5) 
-graph save "Graph" "mean_VA_by_quartile.gph", replace
+graph save "Graph" "mean_VA_by_quartile_4.gph", replace
 
 
 **Fig. 3: Descriptive Statistics
@@ -296,7 +299,7 @@ matrix rownames A1= "LCSW" "Psychologist" "LPC" "LMFT" "LMHC" "LCPC" "LPCC" "Oth
 frmttable, statmat(A1) replace sdec(0) title("License Type") ctitles("","N")
 frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
 frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
-frmttable using "t_descriptives.doc" , replay replace
+frmttable using "t_descriptives_4.doc" , replay replace
 
 ///////////////
 clear matrix
@@ -336,7 +339,7 @@ matrix rownames A1= "M Social Work" "M Counseling" "M Counseling Psychology" "M 
 frmttable, statmat(A1) replace sdec(0) title("Professional Degree") ctitles("","N")
 frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
 frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
-frmttable using "t_descriptives.doc" , addtable replace
+frmttable using "t_descriptives_4.doc" , addtable replace
 
 ///////////////
 clear matrix
@@ -376,7 +379,7 @@ matrix rownames A1= "No Real Exp Yet" "Less Than 5 Yrs" "5-10 Yrs" "More Than 10
 frmttable, statmat(A1) replace sdec(0) title("Experience") ctitles("","N")
 frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
 frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
-frmttable using "t_descriptives.doc" , addtable replace
+frmttable using "t_descriptives_4.doc" , addtable replace
 
 ///////////////
 clear matrix
@@ -416,7 +419,7 @@ matrix rownames A1= "Female" "Male" "Other" "Total"
 frmttable, statmat(A1) replace sdec(0) title("Gender") ctitles("","N")
 frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
 frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
-frmttable using "t_descriptives.doc" , addtable replace
+frmttable using "t_descriptives_4.doc" , addtable replace
 
 ///////////////
 clear matrix
@@ -456,7 +459,7 @@ matrix rownames A1= "missing" "18-25" "26-35" "36-49" "50+" "Total"
 frmttable, statmat(A1) replace sdec(0) title("Age") ctitles("","N")
 frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
 frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
-frmttable using "t_descriptives.doc" , addtable replace
+frmttable using "t_descriptives_4.doc" , addtable replace
 
 
 //Second table: therapist self-reported specialties
@@ -479,7 +482,7 @@ foreach var of local specialties {
 matrix rownames A1 = "DBT" "CBT" "MBCT" "MI" "PTSD" "Relational" "Emotional" "Psychoanalytic"
 frmttable, statmat(A1) replace sdec(0) title("Therapist Specialties") ctitles(" ", "Count") 
 frmttable, statmat(A2) replace sdec(2) merge ctitles("pct")
-frmttable using "specialties.doc", replay replace
+frmttable using "specialties_4.doc", replay replace
 
 //Third table: client descriptives
 clear matrix
@@ -519,7 +522,7 @@ matrix rownames A1= "3" "4" "5" "6" "7" "8" "High School" "Bachelor Degree or Hi
 frmttable, statmat(A1) replace sdec(0) title("Education Level") ctitles("","N")
 frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
 frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
-frmttable using "c_descriptives.doc" , replay replace
+frmttable using "c_descriptives_4.doc" , replay replace
 
 ///////////////
 clear matrix
@@ -559,7 +562,7 @@ matrix rownames A1= "Female" "Male" "Other" "Queer" "Non-Binary" "Transgender Fe
 frmttable, statmat(A1) replace sdec(0) title("Gender") ctitles("","N")
 frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
 frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
-frmttable using "c_descriptives.doc" , addtable replace
+frmttable using "c_descriptives_4.doc" , addtable replace
 
 ///////////////
 clear matrix
@@ -599,7 +602,7 @@ matrix rownames A1= "Caucasian" "Black" "Asian" "Hispanic" "Native American" "Ot
 frmttable, statmat(A1) replace sdec(0) title("Ethnicity") ctitles("","N")
 frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
 frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
-frmttable using "c_descriptives.doc" , addtable replace
+frmttable using "c_descriptives_4.doc" , addtable replace
 
 ///////////////
 clear matrix
@@ -639,7 +642,7 @@ matrix rownames A1= "Single" "Married" "Living w/ Partner" "In a Relationship" "
 frmttable, statmat(A1) replace sdec(0) title("Marital Status") ctitles("","N")
 frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
 frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
-frmttable using "c_descriptives.doc" , addtable replace
+frmttable using "c_descriptives_4.doc" , addtable replace
 
 ///////////////
 clear matrix
@@ -679,7 +682,7 @@ matrix rownames A1= "0-17" "18-25" "26-35" "36-49" "50+" "NA" "Total"
 frmttable, statmat(A1) replace sdec(0) title("Age") ctitles("","N")
 frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
 frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
-frmttable using "c_descriptives.doc" , addtable replace
+frmttable using "c_descriptives_4.doc" , addtable replace
 
 ///////////////
 clear matrix
@@ -719,7 +722,7 @@ matrix rownames A1= "US" "CA" "GB" "Other" "Total"
 frmttable, statmat(A1) replace sdec(0) title("Country") ctitles("","N")
 frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
 frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
-frmttable using "c_descriptives.doc" , addtable replace
+frmttable using "c_descriptives_4.doc" , addtable replace
 
 //Fourth table: Therapist VA descriptives
 clear matrix
@@ -754,7 +757,7 @@ frmttable, statmat(A3) replace sdec(3) merge ctitles("Std. Dev.")
 frmttable, statmat(A4) replace sdec(3) merge ctitles("Min")
 frmttable, statmat(A5) replace sdec(3) merge ctitles("Max")
 frmttable, statmat(A6) replace sdec(3) merge ctitles("Range")
-frmttable using "VA_summary.doc" , replay replace
+frmttable using "VA_summary_4.doc" , replay replace
 
 
 **Fig. 4: Explanation of Therapist VA : Regression Output
@@ -765,10 +768,12 @@ frmttable using "VA_summary.doc" , replay replace
 **Fig. 5: Causal Effect of Therapist VA on Individual Client Outcomes
 
 qui reg overall_improvement zclient_specific 
-outreg2 using va_effect, replace excel dec(3) label
+outreg2 using va_effect_4, replace excel dec(3) label
 
 qui reg overall_improvement zclient_specific $X_1 
-outreg2 using va_effect, append excel dec(3) label
+outreg2 using va_effect_4, append excel dec(3) label
 
 qui reg overall_improvement zclient_specific $X_1 $match_char
-outreg2 using va_effect, append excel dec(3) label
+outreg2 using va_effect_4, append excel dec(3) label
+
+cd ..\..
