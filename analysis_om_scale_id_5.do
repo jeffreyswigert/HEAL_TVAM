@@ -16,10 +16,9 @@ INPUTS:
 clear
 set more off
 
+cd $data
 use "vam_analysis_sample.dta"
-mkdir tvam_5
-cd tvam_5
-mkdir reporting_5
+cd $analysis
 
 keep if om_scale_id == 5
 
@@ -124,7 +123,7 @@ global interaction_char time_to_complete_total media_total_duration_secs_audio m
 global match_char i.gender_match i.age_match firstscore 
 
 **2.2 What explains therapist_effect?
-cd reporting_5
+cd $reporting
 //Naive: How a therapist's fixed characteristics affect his therapist_effect
 reg therapist_effect $p_char , vce(robust)
 outreg2 using explain_va_5, replace excel dec(3) label
@@ -156,7 +155,7 @@ gen adjtherapist_effect = therapist_effect - yhat
 
 **********STEP 3: Individual effects on clients.**********
 
-cd ..
+cd $analysis
 
 **3.1 Generate client_specific improvement variable (nonparametric)
 gen byte nonmissing = !missing(overall_improvement)  
@@ -187,9 +186,7 @@ reg zoverall_improvement zclient_specific $X_1
 */
 
 *********STEP 4: Robustness checks and Alternative specifications.**********
-cd reporting_5
-mkdir experimental_5
-cd experimental_5
+cd $reporting
 
 **4.1 Exploring exogeneity of therapist assignment
 reg therapist_effect $X_1
@@ -235,8 +232,6 @@ drop t_va_*
 ********************************REPORTING*********************************
 **************************************************************************
 
-cd ..
-
 **Fig. 1: Histogram of VA distribution
 histogram therapist_effect, bin(100) fcolor(navy) xscale(range(-3 3)) title(Therapist VA Distribution) xtitle(Therapist Value-Added)
 graph save "Graph" "VA_distribution_5.gph", replace
@@ -250,9 +245,9 @@ graph save "Graph" "VA_distribution_nooutliers_5.gph", replace
 
 
 **Fig. 2: Mean Gain Scores
-cd ..
+cd $analysis
 use "working_om_5.dta", clear
-cd reporting_5
+cd $reporting
 
 xtile quartile = therapist_effect, nq(4)
 cibar therapist_effect , over(quartile) level(95) bargap(5) 
@@ -775,5 +770,3 @@ outreg2 using va_effect_5, append excel dec(3) label
 
 qui reg overall_improvement zclient_specific $X_1 $match_char
 outreg2 using va_effect_5, append excel dec(3) label
-
-cd ..\..
