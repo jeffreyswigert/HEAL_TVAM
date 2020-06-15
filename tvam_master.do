@@ -8,12 +8,13 @@ Coded by: Mitchell Zufelt and Jeff Swigert
 
 INPUTS: 
 		- TalkSpace_Base.csv
-		- analysis_om_scale_id_4
-		- analysis_om_scale_id_5
-		- analysis_om_scale_id_47
-		- analysis_om_scale_id_1
-		- analysis_om_scale_id_2
-		- analysis_om_scale_id_3
+		- analysis_om_scale_id_4.do
+		- analysis_om_scale_id_5.do
+		- analysis_om_scale_id_47.do
+		- analysis_om_scale_id_1.do
+		- analysis_om_scale_id_2.do
+		- analysis_om_scale_id_3.do
+		- va_overall.do
 	
 ***********************************************************************
 ***********************************************************************
@@ -47,7 +48,9 @@ do "analysis_om_scale_id_2.do"
 cd $main
 do "analysis_om_scale_id_3.do"
 
-
+***COMBINED VA MEASURES***
+cd $main
+do "va_overall.do"
 
 
 
