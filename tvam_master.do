@@ -54,22 +54,10 @@ do "va_overall.do"
 
 
 
+/*************************************************************************
+AUTHOR NOTES:
+Download each of the do files and the data set into desired directories, and establish the globals as appropriate.
 
+The most important information is produced by the last do-file ("va_overall.do"), as this analyzes and reports on combined measures of therapist VA, gathered from across each of the six om_scale_id's we look at. 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+**************************************************************************/

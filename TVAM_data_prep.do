@@ -3,7 +3,6 @@ DATA CLEANING AND PREP FOR "Measuring the Impacts of Therapists: A Value-Added A
 
 Coded by: Mitchell Zufelt and Jeff Swigert
 
-Last Updated: 02-27-2020
 
 INPUTS:
 		- TalkSpace_Base.csv
@@ -11,7 +10,7 @@ INPUTS:
 
 clear all
 set more off, perm
-cd "E:/"
+cd $data
 
 // Load base data
 import delimited TalkSpace_Base.csv, varn(1) bindquote(strict) clear
@@ -241,7 +240,7 @@ gen therapist_age = (current - date_of_birth)/365.25
 drop date_of_birth current */
 
 
-save "E:\vam_analysis_sample.dta", replace 
+save "vam_analysis_sample.dta", replace 
 
 **********************************************************************
 

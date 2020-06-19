@@ -61,13 +61,29 @@ by room_id_by_p (ncount): gen byte last = 1 if sum(ncount) == mincount
 keep if first == 1 | last == 1
 drop first ncount mincount last
 
-**1.2 for each room_id_by_p, generate a variable representing the overall improvement in that client's assessment score.
+*1.2 for each room_id_by_p, generate a variable representing the overall improvement in that client's assessment score.
 by room_id_by_p (count), sort: gen frank = scale_score if count == 1
 by room_id_by_p (count) : egen firstscore = min(frank)
 drop frank
 
 by room_id_by_p (count): drop if room_id_by_p == room_id_by_p[_n+1]
 by room_id_by_p (count): gen overall_improvement = scale_score - firstscore
+
+*1.21 for each room_id_by_p, create clin_sig_imp if, in the course of therapy, a client's scale_score goes from below 11 to above it.
+gen low = 0
+replace low = 1 if firstscore < 11
+gen high = 0
+replace high = 1 if scale_score >= 11
+
+gen clin_sig_imp = 1 if low == 1 & high == 1
+replace clin_sig_imp = 0 if clin_sig_imp == .
+label variable clin_sig_imp "1 if therapist has a clinically significant positive impact on patient"
+drop low high
+
+**1.22 for each room_id_by_p, create sig_dec if, in the course of therapy, a client's scale_score drops by 5 or more points. 
+gen sig_dec = 0
+replace sig_dec = 1 if overall_improvement <= -5 
+label variable sig_dec "1 if client scale_score outcome decreases by 5 or more over treatment period"
 
 ** 1.3 Regress each client's overall improvement (from first assessment score to last assessment score) on controls for client characteristics, with fixed effects for each therapist. We are interested in those therapist fixed effects.
 sort therapist_id room_id_by_p
@@ -227,6 +243,95 @@ frmttable, statmat(A2) replace sdec(3) merge ctitles("Std. Dev. of Predicted Val
 frmttable using "count_breakdown_4.doc" , replay replace
 
 drop t_va_*
+
+***************STEP 5: Exploring clinically significant impacts (positive and negative).**********
+
+**5.1 Exploring positive impacts
+reg clin_sig_imp therapist_effect $p_char $match_char, vce(robust)
+outreg2 using likelihood_sig_imp_4, replace excel dec(3) label
+
+clear matrix
+forvalues i=1/3 {
+	mat A`i' = J(3,1,.)
+}
+
+estpost tab clin_sig_imp
+mat x = e(b)
+mat y = e(pct)
+mat z = e(cumpct)
+
+forvalues i = 1/3 {
+	scalar x`i' = x[1,`i']
+	scalar y`i' = y[1,`i']
+}
+
+forvalues i = 1/3 {
+	if `i' < 3 {
+		scalar z`i' = z[1,`i']
+	}
+	else {
+		scalar z`i' = .
+	}
+} 
+
+local n 1
+forvalues i = 1/3 {
+	mat A1[`n',1]= x`i'
+	mat A2[`n',1]= y`i'
+	mat A3[`n',1]= z`i'
+	local ++n
+}
+scalar drop _all
+
+matrix rownames A1= "Not significant" "Significant" "Total"
+frmttable, statmat(A1) replace sdec(0) title("Clinically Significant Impact, by Client/Therapist Interaction") ctitles("","N")
+frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
+frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
+frmttable using "clin_sig_imp_4.doc" , replay replace
+
+**5.2 Exploring negative impacts
+reg sig_dec therapist_effect $p_char $match_char, vce(robust)
+outreg2 using likelihood_sig_dec_4, replace excel dec(3) label
+
+clear matrix
+forvalues i=1/3 {
+	mat A`i' = J(3,1,.)
+}
+
+estpost tab sig_dec
+mat x = e(b)
+mat y = e(pct)
+mat z = e(cumpct)
+
+forvalues i = 1/3 {
+	scalar x`i' = x[1,`i']
+	scalar y`i' = y[1,`i']
+}
+
+forvalues i = 1/3 {
+	if `i' < 3 {
+		scalar z`i' = z[1,`i']
+	}
+	else {
+		scalar z`i' = .
+	}
+} 
+
+local n 1
+forvalues i = 1/3 {
+	mat A1[`n',1]= x`i'
+	mat A2[`n',1]= y`i'
+	mat A3[`n',1]= z`i'
+	local ++n
+}
+scalar drop _all
+
+matrix rownames A1= "Not significant" "Significant" "Total"
+frmttable, statmat(A1) replace sdec(0) title("Significant Negative Impact, by Client/Therapist Interaction") ctitles("","N")
+frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
+frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
+frmttable using "sig_dec_4.doc" , replay replace
+
 
 **************************************************************************
 ********************************REPORTING*********************************
@@ -770,3 +875,20 @@ outreg2 using va_effect_4, append excel dec(3) label
 
 qui reg overall_improvement zclient_specific $X_1 $match_char
 outreg2 using va_effect_4, append excel dec(3) label
+
+
+*********************************************************************
+/* JUNKYARD
+**1.01 create clin_sig_imp if, in the course of therapy, a client's scale_score goes from below 11 to above it.
+gen yup = 0
+bys room_id_by_p : replace yup = 1 if scale_score<11 
+bys room_id_by_p : gen yop = sum(yup)
+
+gen up11 = 0
+bys room_id_by_p (count) : replace up11 = 1 if room_id_by_p[_n+1]!=room_id_by_p & scale_score >= 11 
+
+bys room_id_by_p : gen clin_sig_imp = 1 if yop > 0 &  sum(up11)>0
+replace clin_sig_imp = 0 if clin_sig_imp == .
+bys room_id_by_p : replace clin_sig_imp = clin_sig_imp[_N]
+label variable clin_sig_imp "1 if the therapist had a clinically significant positive impact"
+drop yup yop up11 
