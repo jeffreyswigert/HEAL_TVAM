@@ -8,12 +8,13 @@ Coded by: Mitchell Zufelt and Jeff Swigert
 
 INPUTS: 
 		- TalkSpace_Base.csv
-		- analysis_om_scale_id_4
-		- analysis_om_scale_id_5
-		- analysis_om_scale_id_47
-		- analysis_om_scale_id_1
-		- analysis_om_scale_id_2
-		- analysis_om_scale_id_3
+		- analysis_om_scale_id_4.do
+		- analysis_om_scale_id_5.do
+		- analysis_om_scale_id_47.do
+		- analysis_om_scale_id_1.do
+		- analysis_om_scale_id_2.do
+		- analysis_om_scale_id_3.do
+		- va_overall.do
 	
 ***********************************************************************
 ***********************************************************************
@@ -22,40 +23,41 @@ INPUTS:
 clear
 set more off
 
-***SELECT WORKING DIRECTORY***
-cd "E:\"
+***GLOBALS FOR DIRECTORIES***
+//NOTE: All do-files belong in the "main" folder. TalkSpace_Base.csv belongs in the "data" folder.
+global main "C:\Users\mitch\OneDrive\Desktop\TVAM\HEAL_TVAM"
+global data "C:\Users\mitch\OneDrive\Desktop\TVAM\data"
+global analysis "C:\Users\mitch\OneDrive\Desktop\TVAM\analysis"
+global reporting "C:\Users\mitch\OneDrive\Desktop\TVAM\reporting"
 
 ***INITIAL DATA PREP: Imports and cleans TalkSpace_Base.csv***
+cd $main
 do "TVAM_data_prep.do"
 
-***ANALYSES AND REPORTING: Creates a folder (tvam_#) for each of the 6 om_scale_id's we analyze 
+***ANALYSES AND REPORTING*** 
+cd $main
 do "analysis_om_scale_id_4.do"
+cd $main
 do "analysis_om_scale_id_5.do"
+cd $main
 do "analysis_om_scale_id_47.do"
+cd $main
 do "analysis_om_scale_id_1.do"
+cd $main
 do "analysis_om_scale_id_2.do"
+cd $main
 do "analysis_om_scale_id_3.do"
 
+***COMBINED VA MEASURES***
+cd $main
+do "va_overall.do"
 
 
 
+/*************************************************************************
+AUTHOR NOTES:
+Download each of the do files and the data set into desired directories, and establish the globals as appropriate.
 
+The most important information is produced by the last do-file ("va_overall.do"), as this analyzes and reports on combined measures of therapist VA, gathered from across each of the six om_scale_id's we look at. 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+**************************************************************************/

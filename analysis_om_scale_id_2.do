@@ -16,10 +16,9 @@ INPUTS:
 clear
 set more off
 
+cd $data
 use "vam_analysis_sample.dta"
-mkdir tvam_2
-cd tvam_2
-mkdir reporting_2
+cd $analysis
 
 keep if om_scale_id == 2
 
@@ -69,6 +68,22 @@ drop frank
 
 by room_id_by_p (count): drop if room_id_by_p == room_id_by_p[_n+1]
 by room_id_by_p (count): gen overall_improvement = scale_score - firstscore
+
+*1.21 for each room_id_by_p, create clin_sig_imp if, in the course of therapy, a client's scale_score goes from below 11 to above it.
+gen low = 0
+replace low = 1 if firstscore < 11
+gen high = 0
+replace high = 1 if scale_score >= 11
+
+gen clin_sig_imp = 1 if low == 1 & high == 1
+replace clin_sig_imp = 0 if clin_sig_imp == .
+label variable clin_sig_imp "1 if therapist has a clinically significant positive impact on patient"
+drop low high
+
+*1.22 for each room_id_by_p, create sig_dec if, in the course of therapy, a client's scale_score drops by 5 or more points. 
+gen sig_dec = 0
+replace sig_dec = 1 if overall_improvement <= -5 
+label variable sig_dec "1 if client scale_score outcome decreases by 5 or more over treatment period"
 
 ** 1.3 Regress each client's overall improvement (from first assessment score to last assessment score) on controls for client characteristics, with fixed effects for each therapist. We are interested in those therapist fixed effects.
 sort therapist_id room_id_by_p
@@ -124,7 +139,7 @@ global interaction_char time_to_complete_total media_total_duration_secs_audio m
 global match_char i.gender_match i.age_match firstscore 
 
 **2.2 What explains therapist_effect?
-cd reporting_2
+cd $reporting
 //Naive: How a therapist's fixed characteristics affect his therapist_effect
 reg therapist_effect $p_char , vce(robust)
 outreg2 using explain_va_2, replace excel dec(3) label
@@ -156,7 +171,7 @@ gen adjtherapist_effect = therapist_effect - yhat
 
 **********STEP 3: Individual effects on clients.**********
 
-cd ..
+cd $analysis
 
 **3.1 Generate client_specific improvement variable (nonparametric)
 gen byte nonmissing = !missing(overall_improvement)  
@@ -187,9 +202,7 @@ reg zoverall_improvement zclient_specific $X_1
 */
 
 *********STEP 4: Robustness checks and Alternative specifications.**********
-cd reporting_2
-mkdir experimental_2
-cd experimental_2
+cd $reporting
 
 **4.1 Exploring exogeneity of therapist assignment
 reg therapist_effect $X_1
@@ -231,11 +244,99 @@ frmttable using "count_breakdown_2.doc" , replay replace
 
 drop t_va_*
 
+
+***********STEP 5: Exploring clinically significant impacts (positive and negative).**********
+
+**5.1 Exploring positive impacts
+qui reg clin_sig_imp therapist_effect $p_char $match_char, vce(robust)
+outreg2 using likelihood_sig_imp_2, replace excel dec(3) label
+
+clear matrix
+forvalues i=1/3 {
+	mat A`i' = J(3,1,.)
+}
+
+estpost tab clin_sig_imp
+mat x = e(b)
+mat y = e(pct)
+mat z = e(cumpct)
+
+forvalues i = 1/3 {
+	scalar x`i' = x[1,`i']
+	scalar y`i' = y[1,`i']
+}
+
+forvalues i = 1/3 {
+	if `i' < 3 {
+		scalar z`i' = z[1,`i']
+	}
+	else {
+		scalar z`i' = .
+	}
+} 
+
+local n 1
+forvalues i = 1/3 {
+	mat A1[`n',1]= x`i'
+	mat A2[`n',1]= y`i'
+	mat A3[`n',1]= z`i'
+	local ++n
+}
+scalar drop _all
+
+matrix rownames A1= "Not significant" "Significant" "Total"
+frmttable, statmat(A1) replace sdec(0) title("Clinically Significant Impact, by Client/Therapist Interaction") ctitles("","N")
+frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
+frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
+frmttable using "clin_sig_imp_2.doc" , replay replace
+
+**5.2 Exploring negative impacts
+reg sig_dec therapist_effect $p_char $match_char, vce(robust)
+outreg2 using likelihood_sig_dec_2, replace excel dec(3) label
+
+clear matrix
+forvalues i=1/3 {
+	mat A`i' = J(3,1,.)
+}
+
+estpost tab sig_dec
+mat x = e(b)
+mat y = e(pct)
+mat z = e(cumpct)
+
+forvalues i = 1/3 {
+	scalar x`i' = x[1,`i']
+	scalar y`i' = y[1,`i']
+}
+
+forvalues i = 1/3 {
+	if `i' < 3 {
+		scalar z`i' = z[1,`i']
+	}
+	else {
+		scalar z`i' = .
+	}
+} 
+
+local n 1
+forvalues i = 1/3 {
+	mat A1[`n',1]= x`i'
+	mat A2[`n',1]= y`i'
+	mat A3[`n',1]= z`i'
+	local ++n
+}
+scalar drop _all
+
+matrix rownames A1= "Not significant" "Significant" "Total"
+frmttable, statmat(A1) replace sdec(0) title("Significant Negative Impact, by Client/Therapist Interaction") ctitles("","N")
+frmttable, statmat(A2) replace sdec(2) merge ctitles("Pct")
+frmttable, statmat(A3) replace sdec(2) merge ctitles("Cum Pct")
+frmttable using "sig_dec_2.doc" , replay replace
+
+
 **************************************************************************
 ********************************REPORTING*********************************
 **************************************************************************
-
-cd ..
 
 **Fig. 1: Histogram of VA distribution
 histogram therapist_effect, bin(100) fcolor(navy) xscale(range(-3 3)) title(Therapist VA Distribution) xtitle(Therapist Value-Added)
@@ -250,9 +351,9 @@ graph save "Graph" "VA_distribution_nooutliers_2.gph", replace
 
 
 **Fig. 2: Mean Gain Scores
-cd ..
+cd $analysis
 use "working_om_2.dta", clear
-cd reporting_2
+cd $reporting
 
 xtile quartile = therapist_effect, nq(4)
 cibar therapist_effect , over(quartile) level(95) bargap(5) 
@@ -775,5 +876,3 @@ outreg2 using va_effect_2, append excel dec(3) label
 
 qui reg overall_improvement zclient_specific $X_1 $match_char
 outreg2 using va_effect_2, append excel dec(3) label
-
-cd ..\..
