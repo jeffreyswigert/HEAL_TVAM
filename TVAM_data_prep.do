@@ -9,10 +9,13 @@ INPUTS:
 
 clear all
 set more off, perm
-cd "E:/"
+global data1 "/Volumes/Extreme SSD/Library/Therapist_Value_Added_Local/Data"
+global data2 "/Users/jeffreyswigert/OneDrive/HEAL_TVAM"
+cd $data2
+
 
 // Load base data
-import delimited TalkSpace_Base.csv, varn(1) bindquote(strict) clear
+import delimited "$data1/TalkSpace_Base.csv", varn(1) bindquote(strict) clear
 
 
 //keep only variables that are meaningful to our analysis
@@ -239,7 +242,57 @@ gen therapist_age = (current - date_of_birth)/365.25
 drop date_of_birth current */
 
 
-save "E:\vam_analysis_sample.dta", replace 
+// Label the om_scale_ids
+
+label variable om_scale_id "Pschometric Assessment ID"
+label define om_scale_id1 1 "Anxiety Intensity DASS" /// 
+			 2 "Depression Intensity DASS" ///
+			 3 "Stress Intensity DASS" ///
+			 4 "Anxiety Frequency GAD7" ///
+			 5 "Depression Frequency GAD7" /// 
+			 6 "Memories/Dreams/Reminders PCL5" /// 
+			 7 "Avoidance PCL5" /// 
+			 8 "Negative Thoughts/Feelings PCL5" /// 
+			 9 "Reactivity/Focus/Sleep PCL5" /// 
+			 10 "Checking OCI-R" /// 
+			 11 "Dieting EAT-26" ///  
+			 12 "Bulimia/Food Preoc	EAT-26" ///  
+			 13 "Oral Control EAT-26" /// 
+			 19 "WAI_goal Working Alliance Inventory" ///
+			 20 "WAI_task Working Alliance Inventory" ///
+			 21 "WAI_bond Working Alliance Inventory" ///
+			 22 "Hoarding OCI-R" ///
+			 23 "Neutralizing OCI-R" ///
+			 24 "Obsessing OCI-R" ///
+			 25 "Ordering OCI-R" ///
+			 26 "Washing OCI-R" ///
+			 27 "Alcoholism AUDIT2" ///
+			 28 "Absenteeism WOS-5" ///
+			 29 "Presenteeism WOS-5" ///
+			 30 "Work Engagement WOS-5" ///
+			 31 "Life Satisfaction WOS-5" ///
+			 32 "Workplace Distress	WOS-5" ///
+			 33 "Zanarini/BPD Bordeline Personality Scale" ///
+			 34 "AUDIT Alcohol Use" ///
+			 36 "Quality of Life Survey QoLS" /// 
+			 37 "Negative Affect - Pers Path Aspects" ///
+			 38 "Detachment	Pers Path Aspects" ///
+			 39 "Antagonism	Pers Path Aspects" ///
+			 40 "Disinhibition Pers Path Aspects" ///
+			 41 "Psychoticism Pers Path Aspects" ///
+			 42 "Insomnia Insomnia Severity Index" ///
+			 43 "Substance Use DSM-V Substance Use scale" ///
+			 44 "Social-Anxiety-Phobia	Social Anxiety Scale" ///
+			 45 "Mania	Altman Mania Scale" ///
+			 46 "GAD GAD-7" ///
+			 47 "PHQ-9" ///
+			 48 "Time Demands (Work Limitations Questionairre)" ///
+			 49 "Mental/Interpersonal Demands (WLQ)" ///
+			 50 "Output Demands (WLQ)" ///
+			 51 "Physical Demands (WLQ)" 
+label values om_scale_id om_scale_id1
+
+save "$data2/vam_analysis_sample.dta", replace 
 
 **********************************************************************
 	

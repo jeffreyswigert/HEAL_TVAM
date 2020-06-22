@@ -21,9 +21,9 @@ INPUTS:
 *********************************************************************/
 clear
 set more off
-
+global jeff1 "/Users/jeffreyswigert/OneDrive/HEAL_TVAM/"
 ***SELECT WORKING DIRECTORY***
-cd "E:\"
+cd $jeff1 //"E:\"
 
 ***INITIAL DATA PREP: Imports and cleans TalkSpace_Base.csv***
 do "TVAM_data_prep.do"

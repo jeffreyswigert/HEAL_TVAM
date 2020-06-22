@@ -17,9 +17,9 @@ clear
 set more off
 
 use "vam_analysis_sample.dta"
-mkdir tvam_3
+cap mkdir tvam_3
 cd tvam_3
-mkdir reporting_3
+cap mkdir reporting_3
 
 keep if om_scale_id == 3
 
@@ -188,7 +188,7 @@ reg zoverall_improvement zclient_specific $X_1
 
 *********STEP 4: Robustness checks and Alternative specifications.**********
 cd reporting_3
-mkdir experimental_3
+cap mkdir experimental_3
 cd experimental_3
 
 **4.1 Exploring exogeneity of therapist assignment
@@ -776,4 +776,5 @@ outreg2 using va_effect_3, append excel dec(3) label
 qui reg overall_improvement zclient_specific $X_1 $match_char
 outreg2 using va_effect_3, append excel dec(3) label
 
-cd ..\..
+cd ..
+cd ..
