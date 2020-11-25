@@ -1,3 +1,4 @@
+  
 cd C:\Users\MitchellZufelt\Downloads
 
 mkdir junk
@@ -7,3 +8,76 @@ mkdir reporting
 global junk C:\Users\MitchellZufelt\Downloads\junk
 global reporting C:\Users\MitchellZufelt\Downloads\reporting
 
+
+use va_2016.dta, clear
+
+merge 1:1 therapist_id using va_2017.dta, nogen
+merge 1:1 therapist_id using va_2018.dta, nogen
+merge 1:1 therapist_id using va_2019.dta, nogen
+
+
+
+//Naive estimate: Not accounting for drift over time, but weighted by absolute count (# of clients seen in period)
+
+foreach i in wa_therapist_effect_2016 wa_therapist_effect_2017 wa_therapist_effect_2018 wa_therapist_effect_2019 total_count_2016 total_count_2017 total_count_2018 total_count_2019 {
+	replace `i' = 0 if (`i' >= .)
+}
+
+gen count_total = total_count_2016 + total_count_2017 + total_count_2018 + total_count_2019
+gen tva = ((wa_therapist_effect_2016*(total_count_2016/count_total))+(wa_therapist_effect_2017*(total_count_2017/count_total))+(wa_therapist_effect_2018*(total_count_2018/count_total))+(wa_therapist_effect_2019*(total_count_2019/count_total)))/4
+
+//Standardize.
+sum tva
+gen ztva = (tva-r(mean))/r(sd)
+
+
+//Analyze.
+order therapist_id tva ztva
+
+histogram tva
+histogram ztva
+
+
+
+
+//me trying to figure out how to account for drift in quality over time
+/*
+foreach i in wa_therapist_effect_2016 wa_therapist_effect_2017 wa_therapist_effect_2018 wa_therapist_effect_2019 {
+	replace `i' = 0 if (`i' >= .)
+}
+
+reg wa_therapist_effect_2019 wa_therapist_effect_2016 wa_therapist_effect_2017 wa_therapist_effect_2018
+
+
+gen pred_2019 = .
+
+mat vars = J(1,3,.)
+sum wa_therapist_effect_2016 if therapist_id == 760
+mat vars[1,1] = r(mean)
+sum wa_therapist_effect_2017 if therapist_id == 760
+mat vars[1,2] = r(mean)
+sum wa_therapist_effect_2018 if therapist_id == 760
+mat vars[1,3] = r(mean)
+
+mat sol = coefprime*vars
+mat list sol
+scalar ans = mat
+
+scalar uno = sol[1,1]
+scalar dos = sol[2,1]
+scalar tres = sol[3,1]
+scalar quatro = sol[4,1]
+scalar pred = uno + dos + tres + quatro
+display pred
+
+replace pred_2019 = uno
+
+
+
+mat list coefprime
+mat list vars
+mat list sol
+
+matrix vars 
+
+c
