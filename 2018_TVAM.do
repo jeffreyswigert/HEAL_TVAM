@@ -520,7 +520,8 @@ gen total_count = count_om_1+count_om_2+count_om_3+count_om_4+count_om_5
 
 gen wa_therapist_effect_2018 = ((wa_therapist_effect_1*(count_om_1/total_count))+(wa_therapist_effect_2*(count_om_2/total_count))+(wa_therapist_effect_3*(count_om_3/total_count))+(wa_therapist_effect_4*(count_om_4/total_count))+(wa_therapist_effect_5*(count_om_5/total_count)))
 
-keep therapist_id total_count wa_therapist_effect_2018
+rename total_count total_count_2018
+keep therapist_id total_count_2018 wa_therapist_effect_2018
 
 cd ..
 save va_2018.dta, replace
