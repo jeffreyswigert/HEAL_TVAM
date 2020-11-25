@@ -428,7 +428,7 @@ gen room_id_by_p = (room_id + room_id_placehold), after(room_id_placehold)
 label var room_id_by_p "Each unique client/therapist pairing." 
 drop room_id_placehold
 
-replace scale_score = 21-scale_score
+replace scale_score = 24-scale_score
 xtset room_id_by_p count
 
 keep room_id room_id_by_p client_demo_user_id therapist_id om_scale_id scale_score count time_to_complete_days time_to_complete_total therapist_dbt therapist_cbt therapist_mbct therapist_mi therapist_ptsd therapist_relational therapist_emotionally therapist_psychoanalytic missing* client* therapist_license_type therapist_pro_degree therapist_gender therapist_experience media_total_duration_secs_audio media_total_duration_secs_photo media_total_duration_secs_video therapist_demo_date_of_birth
