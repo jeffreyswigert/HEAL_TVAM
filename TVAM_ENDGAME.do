@@ -1,14 +1,10 @@
 /****************************************
 This do-file starts with "vam_analysis_sample.dta" and estimates therapist effects on overall client improvement for om_scale_id_1. 
-
 It does this by breaking the data into separate panels (based on the # of meetings a therapist has had with her client), then by running a fixed effects regression for each of these panels of overall_improvement on a vector of controls for client characteristics. The fixed effect of therapist is then predicted. A weighted average therapist effect (denoted wa_therapist_effect) is then calculated for each therapist.
-
 Coded by: Mitch Zufelt
 Date: 10/8/2020
-
 INPUTS:
 	-vam_analysis_sample.dta
-
 ***************************************/
 
 
@@ -65,18 +61,11 @@ by room_id_by_p (count): gen overall_improvement = scale_score - firstscore
 sort therapist_id room_id_by_p
 xtset therapist_id room_id_by_p 
 
-/*
-Tried, but including base_score as a control will not work--literally everything is omitted due to collinearity.
-**NEW: CONTROL FOR BASELINE SCORE
-gen bscore = .
-replace bscore = scale_score if count==1
-bys room_id_by_p: egen base_score = min(bscore)
-drop bscore
-*/
+
 
 *****************2. MODELING AND ANALYSIS*************************
 
-global X_1 i.client_edu_lvl i.missing_edu i.client_gender i.missing_gender i.client_ethnicity i.missing_ethnicity i.client_marital_status i.missing_marrital i.client_age i.missing_age i.client_country i.client_state //base_score
+global X_1 i.client_edu_lvl i.missing_edu i.client_gender i.missing_gender i.client_ethnicity i.missing_ethnicity i.client_marital_status i.missing_marrital i.client_age i.missing_age i.client_country i.client_state firstscore
 
 xtreg overall_improvement $X_1, fe vce(robust) //WHAT THIS PRODUCES is an estimate of therapist fixed effects, or what is essentially the effect of being assigned to a particular therapist, on a client's overall_improvement. this regression holds client characteristics constant. 
 //Check for significance/correct interpretation on this. 
@@ -142,31 +131,22 @@ forvalues i = 2/8 {
 	qui: sum t_va_`i', detail
 	scalar sd_`i' = r(sd)
 }
-
-
-
 /* CREATE A TABLE W/ RELEVANT INFO
-
 clear matrix
 forvalues i=1/2 {
 	mat A`i' = J(14,1,.)
 }
-
 local n 1
 forvalues k = 1/14 {
 	mat A1[`n',1]= r2_`k'
 	mat A2[`n',1]= sd_`k'
 	local ++n
 }
-
 matrix rownames A1= "1" "2" "3" "4" "5" "6" "7" "8" "9" "10" "11" "12" "13" "14+" 
 frmttable, statmat(A1) replace sdec(3) title("Breaking Up Unbalanced Panel by 'Count'") ctitles(" ", "Reg. R2")
 frmttable, statmat(A2) replace sdec(3) merge ctitles("Std. Dev. of Predicted Vals")
 frmttable using "count_breakdown_1.doc" , replay replace
-
 drop t_va_*
 */
-
-
 **xtreg *whatever_metric* $vector_of_client_chars&base_score if count.... fe
 **let's do all this for om_id_1 and if that's good, then we'll replicate for all om_id's
