@@ -18,13 +18,10 @@ import delimited TalkSpace_Base.csv, varn(1) bindquote(strict) clear
 
 
 //keep only variables that are meaningful to our analysis
-keep user_room_survey_id room_id therapist_id om_scale_id scale_score count time_to_complete_days time_to_complete_total client_demo_user_id client_demo_gender_customer client_demo_education_level client_demo_ethnicity client_demo_marital_status client_demo_country client_demo_state client_demo_age_customer therapist_demo_platform_join_dat therapist_demo_date_of_birth therapist_demo_professional_degr therapist_demo_gender therapist_demo_therapist_experie therapist_demo_license_type therapist_demo_dbt therapist_demo_cbt therapist_demo_mbct therapist_demo_mi therapist_demo_ptsd therapist_demo_psychodynamic therapist_demo_relational therapist_demo_emotionally therapist_demo_psychoanalytic media_total_duration_secs_audio media_total_duration_secs_photo media_total_duration_secs_video therapist_demo_date_of_birth
-//save vam_analysis_sample.dta, replace
+keep user_room_survey_id room_id therapist_id completed_at om_scale_id scale_score count time_to_complete_days time_to_complete_total client_demo_user_id client_demo_gender_customer client_demo_education_level client_demo_ethnicity client_demo_marital_status client_demo_country client_demo_state client_demo_age_customer therapist_demo_platform_join_dat therapist_demo_date_of_birth therapist_demo_professional_degr therapist_demo_gender therapist_demo_therapist_experie therapist_demo_license_type therapist_demo_dbt therapist_demo_cbt therapist_demo_mbct therapist_demo_mi therapist_demo_ptsd therapist_demo_psychodynamic therapist_demo_relational therapist_demo_emotionally therapist_demo_psychoanalytic media_total_duration_secs_audio media_total_duration_secs_photo media_total_duration_secs_video therapist_demo_date_of_birth
 
-**Variables that I elected not to keep, but that may be valuable: client_demo_plan_type_id; client_demo_plan_name; client_demo_primary_condition; therapist_demo_expertise 
-
-//TODO: we have therapist birthdate--would it be worthwhile to (using that) code up a variable for therapist age? How would this var affect our analysis?
-
+//Truncate date
+replace completed_at = substr(completed_at, 1, 4)
 
 //change all of the therapist type vars to 1 & 0 (not true or false)
 gen therapist_dbt = 1 if therapist_demo_dbt == "True"
