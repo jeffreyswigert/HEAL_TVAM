@@ -1,14 +1,14 @@
 /*************************
-Analyses for 2017
+Analyses for 2016
 **************************/
 
 use vam_analysis_sample.dta, clear
 
 
-keep if completed_at == "2017"
+keep if completed_at == "2016"
 
 cd junk
-save vam_analysis_sample2017.dta, replace
+save vam_analysis_sample2016.dta, replace
 
 
 keep if om_scale_id == 1
@@ -71,20 +71,20 @@ xtreg overall_improvement $X_1 if count == 2, fe vce(robust)
 predict therapist_residual, u
 
 
-forvalues i = 3/7 {
+forvalues i = 3/8 {
 	qui: xtreg overall_improvement $X_1 if count == `i', fe vce(robust)
 	predict t_res, u
 	replace therapist_residual = t_res if therapist_residual == . 
 	drop t_res
 }
 
-drop if count == 1 | count >= 8  //NOTE: I only included therapist/client pairings that had 2-8 interactions, as anything outside of this didn't have enough data to be very meaningful.
+drop if count == 1 | count >= 9  //NOTE: I only included therapist/client pairings that had 2-8 interactions, as anything outside of this didn't have enough data to be very meaningful.
 
 
 ***Now I create a weighted average of each therapist's effect. (I'm sure there's an easier way to find a weighted average in STATA, but I decided doing it manually would be less work then googling it. I was probably wrong.)
 by therapist_id: egen t_total = count(therapist_id)
 
-forvalues i = 2/7 {
+forvalues i = 2/8 {
 	gen hold = 0
 	replace hold = 1 if count == `i' 
 	by therapist_id: gen madhold = sum(hold)
@@ -95,7 +95,7 @@ forvalues i = 2/7 {
 
 drop t_total
 
-forvalues i = 2/7 {
+forvalues i = 2/8 {
 	gen yup`i' = 0
 	replace yup`i' = therapist_residual if count == `i'
 	by therapist_id: egen effect`i' = max(yup`i')	
@@ -103,7 +103,7 @@ forvalues i = 2/7 {
 
 
 gen wa_therapist_effect_1 = .
-by therapist_id : replace wa_therapist_effect_1 = ((effect2*weight2)+(effect3*weight3)+(effect4*weight4)+(effect5*weight5)+(effect6*weight6)+(effect7*weight7))/6
+by therapist_id : replace wa_therapist_effect_1 = ((effect2*weight2)+(effect3*weight3)+(effect4*weight4)+(effect5*weight5)+(effect6*weight6)+(effect7*weight7)+(effect8*weight8))/7
 
 drop effect* yup* weight* 
 
@@ -111,13 +111,13 @@ by therapist_id: egen count_om_1 = max(count)
 drop if therapist_id == therapist_id[_n-1]
 
 keep therapist_id wa_therapist_effect_1 count_om_1
-save om1_2017.dta, replace
+save om1_2016.dta, replace
 
 /*************************************************************************
 OM_ID 2
 **************************************************************************/
 
-use vam_analysis_sample2017, clear
+use vam_analysis_sample2016, clear
 
 
 keep if om_scale_id == 2
@@ -209,13 +209,13 @@ by therapist_id: egen count_om_2 = max(count)
 drop if therapist_id == therapist_id[_n-1]
 
 keep therapist_id wa_therapist_effect_2 count_om_2
-save om2_2017.dta, replace
+save om2_2016.dta, replace
 
 /*************************************************************************
 OM_ID 3
 **************************************************************************/
 
-use vam_analysis_sample2017, clear
+use vam_analysis_sample2016, clear
 
 
 keep if om_scale_id == 3
@@ -307,13 +307,13 @@ by therapist_id: egen count_om_3 = max(count)
 drop if therapist_id == therapist_id[_n-1]
 
 keep therapist_id wa_therapist_effect_3 count_om_3
-save om3_2017.dta, replace
+save om3_2016.dta, replace
 
 /*************************************************************************
 OM_ID 4
 **************************************************************************/
 
-use vam_analysis_sample2017, clear
+use vam_analysis_sample2016, clear
 
 
 keep if om_scale_id == 4
@@ -403,13 +403,13 @@ by therapist_id: egen count_om_4 = max(count)
 drop if therapist_id == therapist_id[_n-1]
 
 keep therapist_id wa_therapist_effect_4 count_om_4
-save om4_2017.dta, replace
+save om4_2016.dta, replace
 
 /*************************************************************************
 OM_ID 5
 **************************************************************************/
 
-use vam_analysis_sample2017, clear
+use vam_analysis_sample2016, clear
 
 
 keep if om_scale_id == 5
@@ -499,28 +499,29 @@ by therapist_id: egen count_om_5 = max(count)
 drop if therapist_id == therapist_id[_n-1]
 
 keep therapist_id wa_therapist_effect_5 count_om_5
-save om5_2017.dta, replace
+save om5_2016.dta, replace
 
 
 /************************************************************************
-2017 OVERALL
+2016 OVERALL
 *************************************************************************/
 
-use om1_2017.dta, clear
+use om1_2016.dta, clear
 
-merge 1:1 therapist_id using om2_2017.dta, nogen
-merge 1:1 therapist_id using om3_2017.dta, nogen
-merge 1:1 therapist_id using om4_2017.dta, nogen
-merge 1:1 therapist_id using om5_2017.dta, nogen
+merge 1:1 therapist_id using om2_2016.dta, nogen
+merge 1:1 therapist_id using om3_2016.dta, nogen
+merge 1:1 therapist_id using om4_2016.dta, nogen
+merge 1:1 therapist_id using om5_2016.dta, nogen
 
 foreach i in wa_therapist_effect_1 wa_therapist_effect_2 wa_therapist_effect_3 wa_therapist_effect_4 wa_therapist_effect_5 count_om_1 count_om_2 count_om_3 count_om_4 count_om_5 {
 	replace `i' = 0 if (`i' >= .) 
 }
 gen total_count = count_om_1+count_om_2+count_om_3+count_om_4+count_om_5
 
-gen wa_therapist_effect_2017 = ((wa_therapist_effect_1*(count_om_1/total_count))+(wa_therapist_effect_2*(count_om_2/total_count))+(wa_therapist_effect_3*(count_om_3/total_count))+(wa_therapist_effect_4*(count_om_4/total_count))+(wa_therapist_effect_5*(count_om_5/total_count)))
+gen wa_therapist_effect_2016 = ((wa_therapist_effect_1*(count_om_1/total_count))+(wa_therapist_effect_2*(count_om_2/total_count))+(wa_therapist_effect_3*(count_om_3/total_count))+(wa_therapist_effect_4*(count_om_4/total_count))+(wa_therapist_effect_5*(count_om_5/total_count)))
 
-keep therapist_id total_count wa_therapist_effect_2017
+rename total_count total_count_2016
+keep therapist_id total_count_2016 wa_therapist_effect_2016
 
 cd ..
-save va_2017.dta, replace
+save va_2016.dta, replace
