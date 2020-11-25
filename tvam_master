@@ -1,0 +1,9 @@
+cd C:\Users\MitchellZufelt\Downloads
+
+mkdir junk
+mkdir reporting
+
+
+global junk C:\Users\MitchellZufelt\Downloads\junk
+global reporting C:\Users\MitchellZufelt\Downloads\reporting
+
