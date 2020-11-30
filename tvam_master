@@ -8,6 +8,24 @@ mkdir reporting
 global junk C:\Users\MitchellZufelt\Downloads\junk
 global reporting C:\Users\MitchellZufelt\Downloads\reporting
 
+use vam_analysis_sample.dta, clear
+
+//Flip scale scores so that a higher score = better mental health; then standardize scores by om_scale_id
+forvalues i = 1/4 {
+	replace scale_score = 21 - scale_score if om_scale_id == `i'
+}
+replace scale_score = 24- scale_score if om_scale_id == 5
+
+forvalues i = 1/5 {
+	sum scale_score if om_scale_id == `i'
+	replace scale_score = (scale_score-r(mean))/r(sd) if om_scale_id == `i'
+}
+
+save vam_analysis_sample1.dta, replace
+
+forvalues i = 16/19 {
+	do 20`i'_TVAM.do
+}
 
 use va_2016.dta, clear
 
