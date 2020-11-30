@@ -511,7 +511,7 @@ merge 1:1 therapist_id using om5_2016.dta, nogen
 foreach i in wa_therapist_effect_1 wa_therapist_effect_2 wa_therapist_effect_3 wa_therapist_effect_4 wa_therapist_effect_5 count_om_1 count_om_2 count_om_3 count_om_4 count_om_5 {
 	replace `i' = 0 if (`i' >= .) 
 }
-gen total_count = count_om_1+count_om_2+count_om_3+count_om_4+count_om_5
+gen total_count_2016 = count_om_1+count_om_2+count_om_3+count_om_4+count_om_5
 
 gen wa_therapist_effect_2016 = ((wa_therapist_effect_1*(count_om_1/total_count))+(wa_therapist_effect_2*(count_om_2/total_count))+(wa_therapist_effect_3*(count_om_3/total_count))+(wa_therapist_effect_4*(count_om_4/total_count))+(wa_therapist_effect_5*(count_om_5/total_count)))
 
