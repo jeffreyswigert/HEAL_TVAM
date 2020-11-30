@@ -2,7 +2,7 @@
 Analyses for 2016
 **************************/
 
-use vam_analysis_sample.dta, clear
+use vam_analysis_sample1.dta, clear
 
 
 keep if completed_at == "2016"
@@ -515,7 +515,7 @@ gen total_count = count_om_1+count_om_2+count_om_3+count_om_4+count_om_5
 
 gen wa_therapist_effect_2016 = ((wa_therapist_effect_1*(count_om_1/total_count))+(wa_therapist_effect_2*(count_om_2/total_count))+(wa_therapist_effect_3*(count_om_3/total_count))+(wa_therapist_effect_4*(count_om_4/total_count))+(wa_therapist_effect_5*(count_om_5/total_count)))
 
-keep therapist_id total_count wa_therapist_effect_2016
+keep therapist_id total_count_2016 wa_therapist_effect_2016
 
 cd ..
 save va_2016.dta, replace
