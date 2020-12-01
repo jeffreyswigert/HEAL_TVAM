@@ -1,4 +1,5 @@
   
+ssc install outreg2
 cd C:\Users\MitchellZufelt\Downloads
 
 mkdir junk
@@ -34,7 +35,7 @@ merge 1:1 therapist_id using va_2018.dta, nogen
 merge 1:1 therapist_id using va_2019.dta, nogen
 
 
-
+//Pt. 1: Creating Value-added estimates
 //Naive estimate: Not accounting for drift over time, but weighted by absolute count (# of clients seen in period)
 
 foreach i in wa_therapist_effect_2016 wa_therapist_effect_2017 wa_therapist_effect_2018 wa_therapist_effect_2019 total_count_2016 total_count_2017 total_count_2018 total_count_2019 {
@@ -48,6 +49,7 @@ gen tva = ((wa_therapist_effect_2016*(total_count_2016/count_total))+(wa_therapi
 sum tva
 gen ztva = (tva-r(mean))/r(sd)
 
+save va_overall.dta, replace
 
 //Analyze.
 order therapist_id tva ztva
@@ -55,6 +57,93 @@ order therapist_id tva ztva
 histogram tva
 histogram ztva
 
+//Pt. 2: Causal effect of being assigned to a high VA therapist?
+use va_overall.dta, clear
+ 
+ **necessary data wrangling to prepare for regression
+merge 1:m therapist_id using vam_analysis_sample1.dta
+drop if tva == .
+keep if om_scale_id == 1 | om_scale_id == 2 | om_scale_id == 3 | om_scale_id == 4 | om_scale_id == 5
+
+gen room_id_placehold = 1, after(room_id)
+replace room_id_placehold = 2 if therapist_id != therapist_id[_n-1] & room_id == room_id[_n-1]  
+replace room_id_placehold = 2 if room_id_placehold[_n-1] == 2 & room_id == room_id[_n-1]
+replace room_id_placehold = 3 if room_id_placehold[_n-1] == 2 & therapist_id != therapist_id[_n-1] & room_id == room_id[_n-1] 
+replace room_id_placehold = 3 if room_id_placehold[_n-1] == 3 & room_id == room_id[_n-1]
+replace room_id_placehold = 4 if room_id_placehold[_n-1] == 3 & therapist_id != therapist_id[_n-1] & room_id == room_id[_n-1] 
+replace room_id_placehold = 4 if room_id_placehold[_n-1] == 4 & room_id == room_id[_n-1]
+
+gen room_id_by_p = (room_id + room_id_placehold), after(room_id_placehold) 
+label var room_id_by_p "Each unique client/therapist pairing." 
+drop room_id_placehold
+
+by om_scale_id room_id_by_p (count), sort: gen byte first = sum(count) == 1
+gen ncount = -count
+by om_scale_id room_id_by_p (ncount), sort: egen mincount = min(ncount)
+by om_scale_id room_id_by_p (ncount): gen byte last = 1 if sum(ncount) == mincount  
+
+keep if first == 1 | last == 1
+drop first ncount mincount last
+
+by om_scale_id room_id_by_p (count), sort: gen frank = scale_score if count == 1
+by om_scale_id room_id_by_p (count) : egen firstscore = min(frank)
+drop frank
+
+by om_scale_id room_id_by_p (count): drop if room_id_by_p == room_id_by_p[_n+1]
+by  om_scale_id room_id_by_p (count): gen overall_improvement = scale_score - firstscore
+
+sort therapist_id room_id_by_p
+
+**begin regression analysis
+cd reporting 
+
+reg overall_improvement ztva client_gender client_edu_lvl client_ethnicity client_marital_status client_age client_state if om_scale_id == 1
+eststo model 
+outreg2 model using va_effect_1.xls, replace title("Regression of Standardized Client Improvement on Standardized Therapist VA (OM-Scale-ID 1)") label
+
+
+reg overall_improvement ztva client_gender client_edu_lvl client_ethnicity client_marital_status client_age client_state if om_scale_id == 2
+eststo model 
+outreg2 model using va_effect_1.xls, append title("Regression of Standardized Client Improvement on Standardized Therapist VA (OM-Scale-ID 2)") label
+
+reg overall_improvement ztva client_gender client_edu_lvl client_ethnicity client_marital_status client_age client_state if om_scale_id == 3
+eststo model 
+outreg2 model using va_effect_1.xls, append title("Regression of Standardized Client Improvement on Standardized Therapist VA (OM-Scale-ID 3)") label
+
+reg overall_improvement ztva client_gender client_edu_lvl client_ethnicity client_marital_status client_age client_state if om_scale_id == 4
+eststo model 
+outreg2 model using va_effect_1.xls, append title("Regression of Standardized Client Improvement on Standardized Therapist VA (OM-Scale-ID 4)") label
+
+reg overall_improvement ztva client_gender client_edu_lvl client_ethnicity client_marital_status client_age client_state if om_scale_id == 5
+eststo model 
+outreg2 model using va_effect_1.xls, append title("Regression of Standardized Client Improvement on Standardized Therapist VA (OM-Scale-ID 5)") label
+
+
+//Pt. 3: What therapist characteristiscs are associated with being high VA?
+
+
+cd ..
+
+use va_overall.dta, clear
+
+merge 1:m therapist_id using vam_analysis_sample1.dta
+drop if tva == .
+keep if om_scale_id == 1 | om_scale_id == 2 | om_scale_id == 3 | om_scale_id == 4 | om_scale_id == 5
+
+sort therapist_id
+keep if therapist_id != therapist_id[_n-1]
+
+replace therapist_demo_date_of_birth = substr(therapist_demo_date_of_birth, 1,4)
+destring(therapist_demo_date_of_birth), replace
+destring(completed_at), replace
+gen therapist_age = completed_at - therapist_demo_date_of_birth
+replace therapist_age = . if therapist_age < 25 | therapist_age >80
+
+cd reporting
+
+reg ztva therapist_pro_degree therapist_gender therapist_experience therapist_license_type therapist_age therapist_dbt therapist_cbt therapist_mbct therapist_mi therapist_ptsd therapist_relational therapist_emotional therapist_psychoanalytic count_total
+eststo model1 
+outreg2 model1 using explain_va.xls, replace title("Regression of Standardized Therapist VA on therapist Characteristics") label
 
 
 
