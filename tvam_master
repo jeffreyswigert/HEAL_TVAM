@@ -147,7 +147,7 @@ outreg2 model1 using explain_va.xls, replace title("Regression of Standardized T
 
 
 
-//me trying to figure out how to account for drift in quality over time
+//me trying to figure out how to account for drift in quality over time. THE FINISHED PRODUCT OF THIS WILL BELONG IN PT.1 (LINES 38-59)
 /*
 foreach i in wa_therapist_effect_2016 wa_therapist_effect_2017 wa_therapist_effect_2018 wa_therapist_effect_2019 {
 	replace `i' = 0 if (`i' >= .)
