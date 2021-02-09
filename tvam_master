@@ -1,13 +1,13 @@
 ssc install estout, replace  
 ssc install outreg2
-cd C:\Users\MitchellZufelt\Downloads
+cd C:\Users\MitchellZufelt\Documents
 
 mkdir junk
 mkdir reporting
 
 
-global junk C:\Users\MitchellZufelt\Downloads\junk
-global reporting C:\Users\MitchellZufelt\Downloads\reporting
+global junk C:\Users\MitchellZufelt\Documents\junk
+global reporting C:\Users\MitchellZufelt\Documents\reporting
 
 use vam_analysis_sample.dta, clear
 
@@ -97,24 +97,24 @@ sort therapist_id room_id_by_p
 **begin regression analysis
 cd reporting 
 
-reg overall_improvement ztva client_gender client_edu_lvl client_ethnicity client_marital_status client_age client_state if om_scale_id == 1
+reg overall_improvement ztva i.client_gender i.client_edu_lvl i.client_ethnicity i.client_marital_status i.client_age i.client_state if om_scale_id == 1
 eststo model 
 outreg2 model using va_effect_1.xls, replace title("Regression of Standardized Client Improvement on Standardized Therapist VA (OM-Scale-ID 1)") label
 
 
-reg overall_improvement ztva client_gender client_edu_lvl client_ethnicity client_marital_status client_age client_state if om_scale_id == 2
+reg overall_improvement ztva i.client_gender i.client_edu_lvl i.client_ethnicity i.client_marital_status i.client_age i.client_state if om_scale_id == 2
 eststo model 
 outreg2 model using va_effect_1.xls, append title("Regression of Standardized Client Improvement on Standardized Therapist VA (OM-Scale-ID 2)") label
 
-reg overall_improvement ztva client_gender client_edu_lvl client_ethnicity client_marital_status client_age client_state if om_scale_id == 3
+reg overall_improvement ztva i.client_gender i.client_edu_lvl i.client_ethnicity i.client_marital_status i.client_age i.client_state if om_scale_id == 3
 eststo model 
 outreg2 model using va_effect_1.xls, append title("Regression of Standardized Client Improvement on Standardized Therapist VA (OM-Scale-ID 3)") label
 
-reg overall_improvement ztva client_gender client_edu_lvl client_ethnicity client_marital_status client_age client_state if om_scale_id == 4
+reg overall_improvement ztva i.client_gender i.client_edu_lvl i.client_ethnicity i.client_marital_status i.client_age i.client_state if om_scale_id == 4
 eststo model 
 outreg2 model using va_effect_1.xls, append title("Regression of Standardized Client Improvement on Standardized Therapist VA (OM-Scale-ID 4)") label
 
-reg overall_improvement ztva client_gender client_edu_lvl client_ethnicity client_marital_status client_age client_state if om_scale_id == 5
+reg overall_improvement ztva i.client_gender i.client_edu_lvl i.client_ethnicity i.client_marital_status i.client_age i.client_state if om_scale_id == 5
 eststo model 
 outreg2 model using va_effect_1.xls, append title("Regression of Standardized Client Improvement on Standardized Therapist VA (OM-Scale-ID 5)") label
 
