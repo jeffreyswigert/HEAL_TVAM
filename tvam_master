@@ -2,16 +2,18 @@ ssc install estout, replace
 ssc install outreg2
 cd C:\Users\MitchellZufelt\Documents
 
+***********Set up******************
+
 mkdir junk
 mkdir reporting
-
 
 global junk C:\Users\MitchellZufelt\Documents\junk
 global reporting C:\Users\MitchellZufelt\Documents\reporting
 
 use vam_analysis_sample.dta, clear
 
-//Flip scale scores so that a higher score = better mental health; then standardize scores by om_scale_id
+
+**Flip scale scores so that a higher score = better mental health; then standardize scores by om_scale_id
 forvalues i = 1/4 {
 	replace scale_score = 21 - scale_score if om_scale_id == `i'
 }
@@ -24,16 +26,24 @@ forvalues i = 1/5 {
 
 save vam_analysis_sample1.dta, replace
 
+
+
+***********Run Cleaning/Analysis Do-Files for each individual year 2016-2019******************
+
+**This creates VA score for each therapist in each year
+
 forvalues i = 16/19 {
 	do 20`i'_TVAM.do
 }
 
+**Merge each year's data together
 use va_2016.dta, clear
-
+ 
 merge 1:1 therapist_id using va_2017.dta, nogen
 merge 1:1 therapist_id using va_2018.dta, nogen
 merge 1:1 therapist_id using va_2019.dta, nogen
 
+***********Merge Data from all years to create overall VA estimates for each therapist******************
 
 //Pt. 1: Creating Value-added estimates
 //Naive estimate: Not accounting for drift over time, but weighted by absolute count (# of clients seen in period)
@@ -121,7 +131,6 @@ outreg2 model using va_effect_1.xls, append title("Regression of Standardized Cl
 
 //Pt. 3: What therapist characteristiscs are associated with being high VA?
 
-
 cd ..
 
 use va_overall.dta, clear
@@ -146,6 +155,7 @@ eststo model1
 outreg2 model1 using explain_va.xls, replace title("Regression of Standardized Therapist VA on therapist Characteristics") label
 
 
+***********Unused/In Progress******************
 
 //me trying to figure out how to account for drift in quality over time. THE FINISHED PRODUCT OF THIS WILL BELONG IN PT.1 (LINES 38-59)
 /*
